@@ -148,26 +148,39 @@ ________________________________________________________________________________
 						// wp_parse_id_list() options
 						$options = wp_parse_id_list( $options );
 					} else {
+						// Option which is having attribute id
 						$options = 0 < $attribute_id ? wc_sanitize_textarea( wc_sanitize_term_text_based( $options ) ) : wc_sanitize_textarea( $options );
+						// 
 						$options = wc_get_text_attributes( $options );
 					}
 
+					// Just Continue if the option is Empty
 					if ( empty( $options ) ) {
 						continue;
 					}
 
+					// Create new Object with product attribute to set all the attribute in woocommerce
 					$attribute = new WC_Product_Attribute();
+					// Set attribute id to the attribute 
 					$attribute->set_id( $attribute_id );
+					// Set attribute name
 					$attribute->set_name( $attribute_name );
+					// Set options to the attribute while creating the product
 					$attribute->set_options( $options );
+					// Set attribute position for the product while craeting variable product
 					$attribute->set_position( $attribute_position[ $i ] );
+					// Set visible to attributes
 					$attribute->set_visible( isset( $attribute_visibility[ $i ] ) );
+					// set variation to the attribute
 					$attribute->set_variation( isset( $attribute_variation[ $i ] ) );
+					// Store all the attribute
 					$attributes[] = $attribute;
 				}
 			}
 
+			// set product Type variable.
 			$product_type = 'variable';
+			// 
 			$classname    = WC_Product_Factory::get_product_classname( $product_id, $product_type );
 			$_product     = new $classname( $product_id );
 			$_product->set_attributes( $attributes );
