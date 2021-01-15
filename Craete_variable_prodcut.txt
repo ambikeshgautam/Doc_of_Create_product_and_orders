@@ -7,7 +7,7 @@ ________________________________________________________________________________
 
 
 			$product --> All product details 
-			$product_details --> Inverntory Details 
+			$product_details --> Inverntory Details
 			$image_details -----> all image Details
 
 			//Get all Etsy variation product 
@@ -182,8 +182,11 @@ ________________________________________________________________________________
 			$product_type = 'variable';
 			// 
 			$classname    = WC_Product_Factory::get_product_classname( $product_id, $product_type );
+			// Creating new object with product
 			$_product     = new $classname( $product_id );
+			// Set attributes to the product.
 			$_product->set_attributes( $attributes );
+			// Save all the product attribute.
 			$_product->save();
 
 			$this->insert_product_category( $product_id, $product, $product_details );
