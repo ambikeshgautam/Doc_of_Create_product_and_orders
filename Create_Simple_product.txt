@@ -1,0 +1,76 @@
+Create Listing Details
+_______________________________________________________________________________________________________________________________________________
+> Make call from Etsy shop to woocommmerce to featch product
+> Check whether the producct results having less than one value then it is simple product [ Create as simple product ]. 
+	
+	if($listings_details = json_decode( json_encode( $listings_details ), true);
+
+		$image_details    = json_decode( json_encode( $images_details ), true);
+_______________________________________________________________________________________________________________________________________________
+		
+					|		CREATE SIMPLE PRODUCT FROM THE  ETSY API RESPONSE			|
+_______________________________________________________________________________________________________________________________________________
+
+		// if the listings_details products have more than one value then it variable product else it is simple product .
+
+		if( isset( $listings_details['results']['products']) && count($listings_details['results']['products']) > 1 ) {
+			// Create Simple product for woocommerce
+			$this->create_variable_product( $product , $listings_details , $image_details , $shop_name );
+		} else {
+			// Create Variable product for Woocommerce
+			$this->create_simple_product( $product , $listings_details , $image_details , $shop_name );
+		}) {
+
+	}
+_______________________________________________________________________________________________________________________________________________
+
+							|  FUNCTION THAT WILL CREATE SIMPLE PRODUCT FOR WOOCOMMERCE  |
+_______________________________________________________________________________________________________________________________________________
+function create_simple_product( $product , $product_details , $image_details , $shop_name ) {
+
+		$product_id = wp_insert_post( array(
+			'post_title' => $product['title'], // title of product from etsy shop
+			'post_status' => 'publish', // Status to insert while creating product
+			'post_type' => 'product', // post type product
+			'post_content'=> $product['description'] // Descriptoin
+		) );
+		if( isset( $image_details['results'] ) ) {
+			$this->create_product_images( $product_id , $image_details['results'] ); //Create Product image . 
+		}
+
+		$this->insert_product_category( $product_id, $product, $product_details ); // Insert product Category
+
+		$_weight = isset( $product['item_weight'] ) ? $product['item_weight'] : 0; // get items weight 
+		$_length = isset( $product['item_length'] ) ? $product['item_length'] : 0; // items length if have then ?
+		$_width  = isset( $product['item_width'] ) ? $product['item_width'] : 0; // Width of items
+		$_height = isset( $product['item_height'] ) ? $product['item_height'] : 0; // Height
+
+		update_post_meta( $product_id , '_weight' , $_weight ); // Update all these in the meta table of wordpress with product id
+		update_post_meta( $product_id , '_length' , $_length ); // length also
+		update_post_meta( $product_id , '_width' , $_width ); // width also
+		update_post_meta( $product_id , '_height' , $_height ); // height 
+
+		wp_set_object_terms( $product_id, 'simple', 'product_type' ); // set product type simple
+		update_post_meta( $product_id,'_visibility','visible'); // visible is visible
+		update_post_meta($product_id , '_ced_etsy_listing_id_' . $shop_name , $product['listing_id'] ); // product listing ids
+		update_post_meta($product_id , '_ced_etsy_url_' . $shop_name , $product['url'] ); // product view url
+		update_post_meta( $product_id , 'ced_etsy_product_data' , $product ); // product data all
+		update_post_meta( $product_id , 'ced_etsy_product_inventory' , $product_details ); // inventory of the product update it into table
+		if(isset($product['sku'][0])) {
+			update_post_meta( $product_id , '_sku' , $product['sku'][0] ); // update skus
+		} else {
+			update_post_meta( $product_id , '_sku' , $product['listing_id'] ); // if this product have no sku then update as listin_id
+		}
+		update_post_meta( $product_id , '_stock_status' , 'instock' ); // update available Stocks
+
+		if( $product['quantity'] > 0 ){ // If the product stock greater than zero then it update as instock 
+			update_post_meta( $product_id, '_stock_status', 'instock');// instock is product
+			update_post_meta( $product_id, '_manage_stock', 'yes'); // manage stocks is true
+			update_post_meta( $product_id, '_stock', $product['quantity'] ); // product Quantity
+		}else{
+			update_post_meta( $product_id, '_stock_status', 'outofstock' ); // update as Outof Stock
+		}
+		update_post_meta( $product_id, '_regular_price', $product['price'] ); // update as reguler price
+		update_post_meta( $product_id, '_price', $product['price'] ); // update price
+}
+_____________________________________________________________________________________-_________________________________________

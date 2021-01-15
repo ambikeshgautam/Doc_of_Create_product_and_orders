@@ -1,0 +1,180 @@
+_______________________________________________________________________________________________________________________________________________
+
+							|  FUNCTION THAT WILL CREATE VARIABLE PRODUCT FOR WOOCOMMERCE  |
+_______________________________________________________________________________________________________________________________________________
+												
+		public function create_variable_product( $product , $product_details ,$image_details , $shop_name ) {
+
+
+			$product --> All product details 
+			$product_details --> Inverntory Details 
+			$image_details -----> all image Details
+
+			//Get all Etsy variation product 
+			$etsy_variation_products = $product_details['results']['products'] ;
+
+			//Get product id by inerting title , status , decription 
+			// by wp_insert_post() function 
+			$product_id = wp_insert_post( array(
+				'post_title'  => $product['title'],
+				'post_status' => 'publish',
+				'post_type'   => 'product',
+				'post_content'=> $product['description']
+			) );
+
+			// Get weight value from the  Etsy -- product array . 
+			$_weight = isset($product['item_weight']) ? $product['item_weight'] : 0;
+			// Length of the product from Etsy product Array
+			$_length = isset($product['item_length']) ? $product['item_length'] : 0;
+			// Weight from the Etsy shop array
+			$_width  = isset($product['item_width']) ? $product['item_width'] : 0;
+			// Height from the Etsy shop array
+			$_height = isset($product['item_height']) ? $product['item_height'] : 0;
+
+			// Insert product type Variable
+			wp_set_object_terms( $product_id, 'variable', 'product_type' );
+			// visibility of the product is visible
+			update_post_meta( $product_id,'_visibility','visible');
+			// Listing Id
+			update_post_meta( $product_id , '_ced_etsy_listing_id_' . $shop_name , $product['listing_id'] );
+			// Etsy view product url of the product
+			update_post_meta( $product_id , '_ced_etsy_url_' . $shop_name , $product['url'] );
+			// product Data store in the post meta details 
+			update_post_meta( $product_id , 'ced_etsy_product_data' , $product );
+			// Udpate product inventory Details with product id
+			update_post_meta( $product_id , 'ced_etsy_product_inventory' , $product_details );
+			// Update product listing id on the place of the sku in the woocommere product
+			update_post_meta( $product_id , '_sku' , $product['listing_id'] );
+			// Product status in stock
+			update_post_meta( $product_id , '_stock_status' , 'instock' );
+			// Weight of the prodcut 
+			update_post_meta( $product_id , '_weight' , $_weight );
+			// Update product Length of theproduct
+			update_post_meta( $product_id , '_length' , $_length );
+			// Width of the product form the Etsy shop
+			update_post_meta( $product_id , '_width' , $_width );
+			// Update height of the product
+			update_post_meta( $product_id , '_height' , $_height );
+
+			// Create product image by the create product details function
+			if( isset( $image_details['results'] ) ) {
+				$this->create_product_images( $product_id , $image_details['results'] );
+			}
+
+			// Get all avaiable_variabtion_attributes
+			foreach ($etsy_variation_products[0]['property_values'] as $key => $value) {
+				$avaliable_variation_attributes[] = $value['property_name'];
+			}
+			// all attribute array
+			$attr_value = array();
+
+			// Mapp all the variations and attribute according to the need
+
+			foreach ($etsy_variation_products as $key => $value) {
+				// Parse property values
+				foreach ($value['property_values'] as $key1 => $value1) {
+					// Variations attribute valuea and proper name
+					$variations[$key]['attributes'][$value1['property_name']] = $value1['values'][0];
+					// attributes property Name
+					$attr_value[$value1['property_name']][]                   = $value1['values'][0];
+				}
+				// get variations price
+				$variations[$key]['price'] = $value['offerings'][0]['price']['currency_formatted_raw'];
+				// get variations Quantity
+				$variations[$key]['quantity'] = $value['offerings'][0]['quantity'];
+				// all vairatins skus
+				$variations[$key]['sku'] = $value['sku'];
+			}
+
+			// All available variations
+			foreach ( $avaliable_variation_attributes as $key => $value ) {
+				// data attribute name
+				$data['attribute_names'][] = $value;
+				// attribute positions
+				$data['attribute_position'][] = $key;
+				$values = array();
+				//	all variations
+				foreach ($variations as $key1 => $value1) {
+					// All attribute values
+					$values[] = $value1['attributes'][$value];
+				}
+
+				// Make unique value of the product
+				$values = array_unique($values);
+				// get attributes value
+				$data['attribute_values'][] = implode('|', $values);
+				// attribute_visiblity
+				$data['attribute_visibility'][] = 1;
+				// attribute_variation
+				$data['attribute_variation'][] = 1;
+			}
+
+			// Attribute names and attribute value . 
+			if ( isset( $data['attribute_names'], $data['attribute_values'] ) ) {
+				// Get attribute names
+				$attribute_names         = $data['attribute_names'];
+				// Attribute values
+				$attribute_values        = $data['attribute_values'];
+				// Attribute visibility
+				$attribute_visibility    = isset( $data['attribute_visibility'] ) ? $data['attribute_visibility'] : array();
+				// attribute data variations
+				$attribute_variation     = isset( $data['attribute_variation'] ) ? $data['attribute_variation'] : array();
+				//attribute posistion
+				$attribute_position      = $data['attribute_position'];
+				// attribute name max key
+				$attribute_names_max_key = max( array_keys( $attribute_names ) );
+
+				for ( $i = 0; $i <= $attribute_names_max_key; $i++ ) {
+					// if product attribute names and value are empty.
+					if ( empty( $attribute_names[ $i ] ) || ! isset( $attribute_values[ $i ] ) ) {
+						continue;
+					}
+					// attribute let as zero
+					$attribute_id   = 0;
+					// attribute name from attribute name array
+					$attribute_name = wc_clean( $attribute_names[ $i ] );
+
+					// check first of threen index of attribute name is equal to the pa_
+					if ( 'pa_' === substr( $attribute_name, 0, 3 ) ) {
+						// get attribute id by the attibute name
+						$attribute_id = wc_attribute_taxonomy_id_by_name( $attribute_name );
+					}
+
+					// get attribute options
+					$options = isset( $attribute_values[ $i ] ) ? $attribute_values[ $i ] : '';
+
+					// if this is an array then true
+					if ( is_array( $options ) ) {
+						// wp_parse_id_list() options
+						$options = wp_parse_id_list( $options );
+					} else {
+						$options = 0 < $attribute_id ? wc_sanitize_textarea( wc_sanitize_term_text_based( $options ) ) : wc_sanitize_textarea( $options );
+						$options = wc_get_text_attributes( $options );
+					}
+
+					if ( empty( $options ) ) {
+						continue;
+					}
+
+					$attribute = new WC_Product_Attribute();
+					$attribute->set_id( $attribute_id );
+					$attribute->set_name( $attribute_name );
+					$attribute->set_options( $options );
+					$attribute->set_position( $attribute_position[ $i ] );
+					$attribute->set_visible( isset( $attribute_visibility[ $i ] ) );
+					$attribute->set_variation( isset( $attribute_variation[ $i ] ) );
+					$attributes[] = $attribute;
+				}
+			}
+
+			$product_type = 'variable';
+			$classname    = WC_Product_Factory::get_product_classname( $product_id, $product_type );
+			$_product     = new $classname( $product_id );
+			$_product->set_attributes( $attributes );
+			$_product->save();
+
+			$this->insert_product_category( $product_id, $product, $product_details );
+			$this->insert_product_tags( $product_id , $product );
+			$this->insert_product_variations( $product_id, $variations, $avaliable_variation_attributes );
+		}
+_______________
